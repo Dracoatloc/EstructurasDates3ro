@@ -1,0 +1,251 @@
+#include <iostream>
+#include <list>
+
+using namespace std;
+
+enum Color { rojo, negro };
+
+template <typename T>
+class Nodo {
+public:
+	T valor;
+	bool color;
+	Nodo<T>* padre = nullptr;
+	Nodo<T>* izquierdo = nullptr;
+	Nodo<T>* derecho = nullptr;
+};
+
+template <typename T>
+class ArbolRojoNegro {
+public:
+	ArbolRojoNegro() {
+	}
+
+	void insertar(T valor) {
+		if (!raiz) {
+			raiz = new Nodo<T>;
+			raiz->valor = valor;
+			raiz->color = negro;
+			cout << raiz->valor << " insertado" << endl;
+			return;
+		}
+		Nodo<T>* nuevoNodo = new Nodo<T>;
+		nuevoNodo->valor = valor;
+		nuevoNodo->color = rojo;
+		raiz = insertarRecursivo(raiz, nuevoNodo);   //insertarRecursivo(raiz, valor);
+		arreglarArbol(raiz, nuevoNodo);
+	}
+
+	void sacar(T valor) {
+		raiz = sacarRecursivo(raiz, valor);
+	}
+
+	bool buscar(T valor) {
+		return buscarRecursivo(raiz, valor);
+	}
+
+	void recorrerEnOrden(Nodo<T>* raiz) {
+		if (!raiz) {
+			cout << endl;
+			return;
+		}
+		else {
+			recorrerEnOrden(raiz->izquierdo);
+			cout << raiz->valor << " ";
+			recorrerEnOrden(raiz->derecho);
+		}
+	}
+
+	Nodo<T>* sacarRaiz() {
+		return raiz;
+	}
+
+
+private:
+
+	Nodo<T>* minNode(Nodo<T>* nodo) {
+		auto actual = nodo;
+		while (actual && actual->izquierdo) {
+			actual = actual->izquierdo;
+		}
+		return actual;
+	}
+
+	Nodo<T>* sacarRecursivo(Nodo<T>* actual, T buscado) {
+		if (!actual) {
+			return nullptr;
+		}
+
+		if (actual->valor == buscado) {
+			if (!actual->izquierdo) {
+				auto derecho = actual->derecho;
+				delete actual;
+				return derecho;
+			}
+			else if (!actual->derecho) {
+				auto izquierdo = actual->derecho;
+				delete actual;
+				return izquierdo;
+			}
+
+			auto temp = minNode(actual->derecho);
+			actual->valor = temp->valor;
+			actual->derecho = sacarRecursivo(actual->derecho, temp->valor);
+			return actual;
+		}
+		else if (buscado < actual->valor) {
+			actual->izquierdo = sacarRecursivo(actual->izquierdo, buscado);
+			return actual;
+		}
+		else {
+			actual->derecho = sacarRecursivo(actual->derecho, buscado);
+			return actual;
+		}
+	}
+
+	bool buscarRecursivo(Nodo<T>* actual, T valor) {
+
+		if (!actual) {
+			cout << "Buscando " << valor << " no encontrado " << endl;
+			return false;
+		}
+
+		cout << " Buscando " << valor << " en " << actual->valor << endl;
+
+		if (actual->valor == valor) {
+			return true;
+		}
+
+		if (valor < actual->valor) {
+			return buscarRecursivo(actual->izquierdo, valor);
+		}
+		else {
+			return buscarRecursivo(actual->derecho, valor);
+		}
+	}
+
+	//void insertarRecursivo(Nodo<T>* actual, T valor)
+	Nodo<T>* insertarRecursivo(Nodo<T>*& raiz, Nodo<T>*& actual) {
+		if (!raiz) {
+			cout << actual->valor << " insertado" << endl;
+			return actual;
+		}
+
+		if (actual->valor > raiz->valor) {
+			raiz->derecho = insertarRecursivo(raiz->derecho, actual);
+			raiz->derecho->padre = raiz;
+		}
+		else if (actual->valor < raiz->valor) {
+			raiz->izquierdo = insertarRecursivo(raiz->izquierdo, actual);
+			raiz->izquierdo->padre = raiz;
+		}
+		return raiz;
+	}
+
+
+	void rotarIzquierda(Nodo<T>*& raiz, Nodo<T>*& apuntador) {
+		Nodo<T>* apuntadorDerecho = apuntador->derecho;
+		apuntador->derecho = apuntadorDerecho->izquierdo;
+		if (apuntador->derecho) {
+			apuntador->derecho->padre = apuntador;
+		}
+		apuntadorDerecho->padre = apuntador->padre;
+		if (!apuntador->padre) {
+			raiz = apuntadorDerecho;
+		}
+		else if (apuntador->padre->izquierdo == apuntador) {
+			apuntador->padre->izquierdo = apuntadorDerecho;
+		}
+		else {
+			apuntador->padre->derecho = apuntadorDerecho;
+		}
+		apuntadorDerecho->izquierdo = apuntador;
+		apuntador->padre = apuntadorDerecho;
+	}
+
+	void rotarDerecha(Nodo<T>*& raiz, Nodo<T>*& apuntador) {
+		Nodo<T>* apuntadorIzquierdo = apuntador->izquierdo;
+		apuntador->izquierdo = apuntadorIzquierdo->derecho;
+		if (apuntador->izquierdo) {
+			apuntador->izquierdo->padre = apuntador;
+		}
+		apuntadorIzquierdo->padre = apuntador->padre;
+		if (!apuntador->padre) {
+			raiz = apuntadorIzquierdo;
+		}
+		else if (apuntador->padre->izquierdo == apuntador) {
+			apuntador->padre->izquierdo = apuntadorIzquierdo;
+		}
+		else {
+			apuntador->padre->derecho = apuntadorIzquierdo;
+		}
+		apuntadorIzquierdo->derecho = apuntador;
+		apuntador->padre = apuntadorIzquierdo;
+	}
+
+	void arreglarArbol(Nodo<T>*& raiz, Nodo<T>*& apuntador) {
+		Nodo<T>* apuntadorPadre = nullptr;
+		Nodo<T>* apuntadorAbuelo = nullptr;
+		while ((apuntador != raiz)&&(apuntador->color != negro) && (apuntador->padre->color == rojo)) {
+			apuntadorPadre = apuntador->padre;
+			apuntadorAbuelo = apuntador->padre->padre;
+			if (apuntadorPadre == apuntadorAbuelo->izquierdo) {
+				Nodo<T>* apuntadorTio = apuntadorAbuelo->derecho;
+				if (apuntadorTio && apuntadorTio->color == rojo) {
+					apuntadorPadre->color = negro;
+					apuntadorTio->color = negro;
+					apuntadorAbuelo->color = rojo;
+					apuntador = apuntadorAbuelo;
+				}
+				else {
+					if (apuntadorPadre->derecho == apuntador) {
+						rotarIzquierda(raiz, apuntadorPadre);
+						apuntador = apuntadorPadre;
+						apuntadorPadre = apuntador->padre;
+					}
+					rotarDerecha(raiz, apuntadorAbuelo);
+					swap(apuntadorPadre->color, apuntadorAbuelo->color);
+					apuntador = apuntadorPadre;
+				}
+			}
+			else {
+				Nodo<T>* apuntadorTio = apuntadorAbuelo->izquierdo;
+				if ((apuntadorTio->color == rojo) && (apuntadorTio)) {
+					apuntadorPadre->color = negro;
+					apuntadorTio->color = negro;
+					apuntadorAbuelo->color = rojo;
+				}
+				else {
+					if (apuntadorPadre->izquierdo == apuntador) {
+						rotarDerecha(raiz, apuntadorPadre);
+						apuntador = apuntadorPadre;
+						apuntadorPadre = apuntador->padre;
+					}
+					rotarIzquierda(raiz, apuntadorAbuelo);
+					swap(apuntadorPadre->color, apuntadorAbuelo->color);
+					apuntador = apuntadorPadre;
+				}
+			}
+		}
+		raiz->color = negro;
+	}
+
+	Nodo<T>* raiz = nullptr;
+	//list<T>* lista = new list<T>();
+};
+
+int main()
+{
+	ArbolRojoNegro<int> arbol;
+	//cout << "Insertando: " << endl;
+	arbol.insertar(80);
+	arbol.insertar(40);
+	arbol.insertar(20);
+  arbol.insertar(70);
+	arbol.insertar(30);
+	arbol.insertar(50);
+	arbol.insertar(60);
+
+	arbol.recorrerEnOrden(arbol.sacarRaiz());
+	return 0;
+}
